@@ -55,7 +55,13 @@ ESP8266WebServer server(80);
 File fsUploadFile;
 const char *APssid = "ESP_Button";
 const char *APpass = "wifibutton";
+// Time to sleep (in seconds):
+const int sleepTimeS = 60;
 
+void gotoSleep() {
+  ESP.deepSleep(sleepTimeS * 1000000);
+}
+  
 void setup()
 {
   //start serial monitor, SPIFFS and Config. Pin
@@ -158,7 +164,7 @@ void setup()
         Serial.println("entering deep sleep");
         delay(20);
         fail();
-        ESP.deepSleep(0);
+        gotoSleep();
       }
     }
 
@@ -186,7 +192,7 @@ void loop()
       Serial.println("entering deep sleep");
       delay(20);
       fail();
-      ESP.deepSleep(0);
+      gotoSleep();
     }
 
     Serial.print("Try: ");
@@ -269,7 +275,7 @@ void loop()
         client.stop();
         //return;
         Serial.println("entering deep sleep");
-        ESP.deepSleep(0);
+        gotoSleep();
       }
     }
 
@@ -288,7 +294,7 @@ void loop()
     Serial.println("entering deep sleep");
     delay(100);
     yay();
-    ESP.deepSleep(0);
+    gotoSleep();
   }
 }
 
