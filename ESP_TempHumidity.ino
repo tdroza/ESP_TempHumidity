@@ -1,6 +1,12 @@
 /*
    Libraries needed
 */
+//For temp & humidity sensor
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
+
+
 //Normal Mode
 #include <ESP8266WiFi.h>
 #include <ArduinoJson.h>
@@ -28,6 +34,12 @@ bool s_vcc;      //wether to send VCC voltage as a parameter in the url request.
 bool is_ip;      //wether host adress is IP
 String vcc_parm; //parameter to pass VCC voltage by.
 
+// Temp/Humidity sensor setup
+#define DHT11_PIN 0
+#define TEMP_PARAM "field2";
+#define HUMIDITY_PARAM "field3";
+DHT dht(DHT11_PIN, DHT11);
+
 /*
    System Variables
 */
@@ -38,6 +50,7 @@ ADC_MODE(ADC_VCC);
 bool su_mode = true;
 //Config. Mode
 #define CONFIG_PIN 3
+
 ESP8266WebServer server(80);
 File fsUploadFile;
 const char *APssid = "ESP_Button";
@@ -49,6 +62,13 @@ void setup()
   Serial.begin(115200);
   pinMode(CONFIG_PIN, INPUT_PULLUP);
   delay(10);
+
+  dht.begin();
+  Serial.print("Temp C  : ");
+  Serial.println(dht.readTemperature());
+  Serial.print("Humidity: ");
+  Serial.println(dht.readHumidity());
+
   SPIFFS.begin();
   Serial.println();
   Serial.println("Button Booting...");
@@ -72,7 +92,7 @@ void setup()
   if (su_mode)
   {
 
-//start Config. Mode
+    //start Config. Mode
 #ifdef NOT_DEBUG
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, LOW);
@@ -98,7 +118,9 @@ void setup()
     });
     server.on("/edit", HTTP_PUT, handleFileCreate);
     server.on("/edit", HTTP_DELETE, handleFileDelete);
-    server.on("/edit", HTTP_POST, []() { server.send(200, "text/plain", ""); }, handleFileUpload);
+    server.on("/edit", HTTP_POST, []() {
+      server.send(200, "text/plain", "");
+    }, handleFileUpload);
 
     //pages from SPIFFS
     server.onNotFound([]() {
@@ -209,12 +231,24 @@ void loop()
     //create the URI for the request
     if (s_vcc)
     {
-      url += "?";
+      if (url.indexOf("?") > 0) {
+        url += "&";
+      } else {
+        url += "?";
+      }
       url += vcc_parm;
       url += "=";
       uint32_t getVcc = ESP.getVcc();
       String VccVol = String((getVcc / 1000U) % 10) + "." + String((getVcc / 100U) % 10) + String((getVcc / 10U) % 10) + String((getVcc / 1U) % 10);
       url += VccVol;
+      url += "&";
+      url += TEMP_PARAM;
+      url += "=";
+      url += dht.readTemperature();
+      url += "&";
+      url += HUMIDITY_PARAM;
+      url += "=";
+      url += dht.readHumidity();
     }
 
     //request url to server
