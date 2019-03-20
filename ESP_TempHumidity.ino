@@ -58,7 +58,7 @@ File fsUploadFile;
 const char *APssid = "ESP_Button";
 const char *APpass = "wifibutton";
 // Time to sleep (in seconds):
-const int sleepTimeS = 60;
+const int sleepTimeS = 3600;
 
 void gotoSleep() {
   ESP.deepSleep(sleepTimeS * 1000000);
@@ -73,13 +73,13 @@ void setup()
 
   dht.begin();
   Serial.print("Temp C  : ");
-  Serial.println(dht.readTemperature());
+  Serial.println(String(dht.readTemperature()));
   Serial.print("Humidity: ");
-  Serial.println(dht.readHumidity());
+  Serial.println(String(dht.readHumidity()));
 
   SPIFFS.begin();
   Serial.println();
-  Serial.println("Button Booting...");
+  Serial.println("ESP Booting...");
   Serial.println("SPIFFS Content: ");
   {
     Dir dir = SPIFFS.openDir("/");
@@ -358,6 +358,10 @@ void readConfig()
       ;
   }
   size_t size = configFile.size();
+  
+  Serial.print("Config File Size: ");
+  Serial.println(String (size));
+  
   if (size > 1024)
   {
     Serial.println("Config file size is too large");
@@ -366,7 +370,7 @@ void readConfig()
   }
   std::unique_ptr<char[]> buf(new char[size]);
   configFile.readBytes(buf.get(), size);
-  StaticJsonBuffer<300> jsonBuffer;
+  StaticJsonBuffer<450> jsonBuffer;
   JsonObject &json = jsonBuffer.parseObject(buf.get());
   if (!json.success())
   {
@@ -605,4 +609,3 @@ void handleFileList()
   output += "]";
   server.send(200, "text/json", output);
 }
-
