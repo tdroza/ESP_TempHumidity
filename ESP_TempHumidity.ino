@@ -30,14 +30,16 @@ String host;
 String url;
 int wc_p;        // max. time in seconds to connect to wifi, before giving up
 int gr_p;        // max. times of attemps to perform GET request, before giving up
-bool s_vcc;      //wether to send VCC voltage as a parameter in the url request.
-bool is_ip;      //wether host adress is IP
-String vcc_parm; //parameter to pass VCC voltage by.
+bool s_vcc;      // whether to send VCC voltage as a parameter in the url request.
+bool s_temp;     // whether to send temperature from DHT11 as a parameter in the url request.
+bool s_humidity; // whether to send humidity from DHT11 as a parameter in the url request.
+bool is_ip;      // whether host adress is IP
+String vcc_parm;      // parameter to pass VCC voltage by.
+String temp_parm;     // parameter to pass temperature by.
+String humidity_parm; // parameter to pass humidity by.
 
 // Temp/Humidity sensor setup
 #define DHT11_PIN 0
-#define TEMP_PARAM "field2";
-#define HUMIDITY_PARAM "field3";
 DHT dht(DHT11_PIN, DHT11);
 
 /*
@@ -176,6 +178,17 @@ void setup()
   }
 }
 
+void addQueryParam(String &url, String queryName, String queryValue) {
+  if (url.indexOf("?") > 0) {
+    url += "&";
+  } else {
+    url += "?";
+  }
+  url += queryName;
+  url += "=";
+  url += queryValue;
+}
+
 void loop()
 {
   if (su_mode)
@@ -235,26 +248,16 @@ void loop()
     }
 
     //create the URI for the request
-    if (s_vcc)
-    {
-      if (url.indexOf("?") > 0) {
-        url += "&";
-      } else {
-        url += "?";
-      }
-      url += vcc_parm;
-      url += "=";
+    if (s_vcc) {
       uint32_t getVcc = ESP.getVcc();
-      String VccVol = String((getVcc / 1000U) % 10) + "." + String((getVcc / 100U) % 10) + String((getVcc / 10U) % 10) + String((getVcc / 1U) % 10);
-      url += VccVol;
-      url += "&";
-      url += TEMP_PARAM;
-      url += "=";
-      url += dht.readTemperature();
-      url += "&";
-      url += HUMIDITY_PARAM;
-      url += "=";
-      url += dht.readHumidity();
+      String vccVol = String((getVcc / 1000U) % 10) + "." + String((getVcc / 100U) % 10) + String((getVcc / 10U) % 10) + String((getVcc / 1U) % 10);
+      addQueryParam(url, vcc_parm, vccVol);
+    }
+    if (s_temp) {
+      addQueryParam(url, temp_parm, String(dht.readTemperature()));
+    }
+    if (s_humidity) {
+      addQueryParam(url, humidity_parm, String(dht.readHumidity()));
     }
 
     //request url to server
@@ -379,8 +382,12 @@ void readConfig()
   wc_p = json["wc_p"];
   gr_p = json["gr_p"];
   s_vcc = json["s_vcc"];
+  s_temp = json["s_temp"];
+  s_humidity = json["s_humidity"];
   is_ip = json["is_ip"];
   vcc_parm = (const char *)json["vcc_p"];
+  temp_parm = (const char *)json["temp_p"];
+  humidity_parm = (const char *)json["humidity_p"];
 
   Serial.println("Parsed JSON Config.");
   Serial.print("Loaded ssid: ");
@@ -401,6 +408,14 @@ void readConfig()
   Serial.println(s_vcc);
   Serial.print("Loaded VCC Param.: ");
   Serial.println(vcc_parm);
+  Serial.print("Loaded Send Temp: ");
+  Serial.println(s_temp);
+  Serial.print("Loaded Temp Param.: ");
+  Serial.println(temp_parm);
+  Serial.print("Loaded Send Humidity: ");
+  Serial.println(s_humidity);
+  Serial.print("Loaded Humidity Param.: ");
+  Serial.println(humidity_parm);
   Serial.println();
 }
 
@@ -590,3 +605,4 @@ void handleFileList()
   output += "]";
   server.send(200, "text/json", output);
 }
+
