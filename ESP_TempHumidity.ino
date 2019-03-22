@@ -28,16 +28,16 @@ String ssid;
 String password;
 String host;
 String url;
-int wc_p;        // max. time in seconds to connect to wifi, before giving up
-int gr_p;        // max. times of attemps to perform GET request, before giving up
-int report_interval_mins; // number of minutes between reporting (aka, duration of deep sleep)
-bool s_vcc;      // whether to send VCC voltage as a parameter in the url request.
-bool s_temp;     // whether to send temperature from DHT11 as a parameter in the url request.
-bool s_humidity; // whether to send humidity from DHT11 as a parameter in the url request.
-bool is_ip;      // whether host adress is IP
-String vcc_parm;      // parameter to pass VCC voltage by.
-String temp_parm;     // parameter to pass temperature by.
-String humidity_parm; // parameter to pass humidity by.
+int wc_p;                    // max. time in seconds to connect to wifi, before giving up
+int gr_p;                    // max. times of attemps to perform GET request, before giving up
+int reporting_interval_mins; // number of minutes between reporting (aka, duration of deep sleep)
+bool s_vcc;                  // whether to send VCC voltage as a parameter in the url request
+bool s_temp;                 // whether to send temperature from DHT11 as a parameter in the url request
+bool s_humidity;             // whether to send humidity from DHT11 as a parameter in the url request
+bool is_ip;                  // whether host adress is IP
+String vcc_parm;             // parameter to pass VCC voltage by
+String temp_parm;            // parameter to pass temperature by
+String humidity_parm;        // parameter to pass humidity by
 
 // Temp/Humidity sensor setup
 #define DHT11_PIN 0
@@ -56,11 +56,11 @@ bool su_mode = true;
 
 ESP8266WebServer server(80);
 File fsUploadFile;
-const char *APssid = "ESP_Button";
-const char *APpass = "wifibutton";
+const char *APssid = "ESP_Sensor";
+const char *APpass = "wifisensor";
 
 void gotoSleep() {
-  ESP.deepSleep(report_interval_mins * 60 * 1000000);
+  ESP.deepSleep(reporting_interval_mins * 60 * 1000000);
 }
   
 void setup()
@@ -384,7 +384,7 @@ void readConfig()
   url = (const char *)json["uri"];
   wc_p = json["wc_p"];
   gr_p = json["gr_p"];
-  report_interval_mins = json["report_interval_mins"];
+  reporting_interval_mins = json["reporting_interval_mins"];
   s_vcc = json["s_vcc"];
   s_temp = json["s_temp"];
   s_humidity = json["s_humidity"];
@@ -409,7 +409,7 @@ void readConfig()
   Serial.print("Loaded GET Request Persistance: ");
   Serial.println(gr_p);
   Serial.print("Loaded Reporting Interval (mins): ");
-  Serial.println(report_interval_mins);
+  Serial.println(reporting_interval_mins);
   Serial.print("Loaded Send VCC: ");
   Serial.println(s_vcc);
   Serial.print("Loaded VCC Param.: ");
