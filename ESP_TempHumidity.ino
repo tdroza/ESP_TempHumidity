@@ -40,8 +40,8 @@ String temp_parm;            // parameter to pass temperature by
 String humidity_parm;        // parameter to pass humidity by
 
 // Temp/Humidity sensor setup
-#define DHT11_PIN 0
-DHT dht(DHT11_PIN, DHT11);
+#define DHT_PIN 0
+DHT dht(DHT_PIN, DHT22);
 
 /*
    System Variables
