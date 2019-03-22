@@ -30,6 +30,7 @@ String host;
 String url;
 int wc_p;        // max. time in seconds to connect to wifi, before giving up
 int gr_p;        // max. times of attemps to perform GET request, before giving up
+int report_interval_mins; // number of minutes between reporting (aka, duration of deep sleep)
 bool s_vcc;      // whether to send VCC voltage as a parameter in the url request.
 bool s_temp;     // whether to send temperature from DHT11 as a parameter in the url request.
 bool s_humidity; // whether to send humidity from DHT11 as a parameter in the url request.
@@ -57,11 +58,9 @@ ESP8266WebServer server(80);
 File fsUploadFile;
 const char *APssid = "ESP_Button";
 const char *APpass = "wifibutton";
-// Time to sleep (in seconds):
-const int sleepTimeS = 3600;
 
 void gotoSleep() {
-  ESP.deepSleep(sleepTimeS * 1000000);
+  ESP.deepSleep(report_interval_mins * 60 * 1000000);
 }
   
 void setup()
@@ -71,6 +70,7 @@ void setup()
   pinMode(CONFIG_PIN, INPUT_PULLUP);
   delay(10);
 
+  // Read sensor values
   dht.begin();
   Serial.print("Temp C  : ");
   Serial.println(String(dht.readTemperature()));
@@ -146,7 +146,6 @@ void setup()
     //start Normal Mode
 
     //connect to WiFi
-    Serial.println();
     Serial.println();
     Serial.print("Connecting to ");
     Serial.println(ssid);
@@ -385,6 +384,7 @@ void readConfig()
   url = (const char *)json["uri"];
   wc_p = json["wc_p"];
   gr_p = json["gr_p"];
+  report_interval_mins = json["report_interval_mins"];
   s_vcc = json["s_vcc"];
   s_temp = json["s_temp"];
   s_humidity = json["s_humidity"];
@@ -408,6 +408,8 @@ void readConfig()
   Serial.println(wc_p);
   Serial.print("Loaded GET Request Persistance: ");
   Serial.println(gr_p);
+  Serial.print("Loaded Reporting Interval (mins): ");
+  Serial.println(report_interval_mins);
   Serial.print("Loaded Send VCC: ");
   Serial.println(s_vcc);
   Serial.print("Loaded VCC Param.: ");
