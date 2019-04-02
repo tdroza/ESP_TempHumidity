@@ -150,7 +150,7 @@ void setup()
 
     //connect to WiFi
     Serial.println();
-    Serial.print("Connecting to ");
+    Serial.print("Connecting to WiFi: ");
     Serial.println(ssid);
 
     WiFi.mode(WIFI_STA);
@@ -212,12 +212,49 @@ void loop()
 
     Serial.print("Try: ");
     Serial.println(failCount);
-    Serial.print("connecting to ");
-    Serial.println(host);
-
+  
     //try to connect to the host with TCP
     WiFiClient client;
     const int httpPort = 80;
+
+    uint32_t vccRaw;
+    if (s_vcc || s_lowbattery) {
+      vccRaw = ESP.getVcc();
+      Serial.print("VCC Raw: ");
+      Serial.println(vccRaw);
+      Serial.print("lowbattery_threshold: ");
+      Serial.println(lowbattery_threshold);
+    }
+    
+    if (s_lowbattery && vccRaw < lowbattery_threshold) {
+      // need to send a low battery notification
+      Serial.println("Sending low battery notification");
+      String lowbattery_url = lowbattery_uri.substring(lowbattery_uri.indexOf("/"));
+      String lowbattery_host = lowbattery_uri.substring(0, lowbattery_uri.indexOf("/"));
+      if (!client.connect(lowbattery_host, httpPort))
+      {
+        Serial.println("connection failed");
+        delay(10);
+      }
+      client.print(String("GET ") + lowbattery_url + " HTTP/1.1\r\n" +
+                 "Host: " + lowbattery_host + "\r\n" +
+                 "Connection: close\r\n\r\n");
+      unsigned long timeout = millis();
+      while (client.available() == 0)
+      {
+        if (millis() - timeout > 60000)
+        {
+          //give up if the server takes too long to reply.
+          Serial.println(">>> Client Timeout !");
+          client.stop();
+        }
+      }
+      // assume low battery notification worked. Prevent retrying if next http request is retried
+      s_lowbattery = false;
+    }
+    
+    Serial.print("connecting to ");
+    Serial.println(host);
     if (is_ip)
     {
       IPAddress addr;
@@ -249,37 +286,7 @@ void loop()
       }
     }
     
-    uint32_t vccRaw;
-    if (s_vcc || s_lowbattery) {
-      uint32_t vccRaw = ESP.getVcc();
-    }
-    
-    if (s_lowbattery && vccRaw < lowbattery_threshold) {
-      // need to send a low battery notification
-      Serial.println("Sending low battery notification");
-      String lowbattery_url = lowbattery_uri.substring(lowbattery_uri.indexOf("/"));
-      String lowbattery_host = lowbattery_uri.substring(0, lowbattery_uri.indexOf("/"));
-      if (!client.connect(lowbattery_host, httpPort))
-      {
-        //try again if the connection fails.
-        Serial.println("connection failed");
-        delay(10);
-        return;
-      }
-      client.print(String("GET ") + lowbattery_url + " HTTP/1.1\r\n" +
-                 "Host: " + lowbattery_host + "\r\n" +
-                 "Connection: close\r\n\r\n");
-      unsigned long timeout = millis();
-      while (client.available() == 0)
-      {
-        if (millis() - timeout > 60000)
-        {
-          //give up if the server takes too long to reply.
-          Serial.println(">>> Client Timeout !");
-          client.stop();
-        }
-      }
-    }
+
     
     if (s_vcc) {
       String vccFormatted = String((vccRaw / 1000U) % 10) + "." + String((vccRaw / 100U) % 10) + String((vccRaw / 10U) % 10) + String((vccRaw / 1U) % 10);
@@ -653,4 +660,3 @@ void handleFileList()
   output += "]";
   server.send(200, "text/json", output);
 }
-
