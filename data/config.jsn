@@ -12,5 +12,8 @@
   "s_temp": false,
   "temp_p": "field2",
   "s_humidity": false,
-  "humidity_p": "field3"
+  "humidity_p": "field3",
+  "s_lowbattery": false,
+  "low_battery_threshold": 3.15,
+  "low_battery_uri": "notification_uri.com"
 }

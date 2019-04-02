@@ -28,16 +28,19 @@ String ssid;
 String password;
 String host;
 String url;
-int wc_p;                    // max. time in seconds to connect to wifi, before giving up
-int gr_p;                    // max. times of attemps to perform GET request, before giving up
-int reporting_interval_mins; // number of minutes between reporting (aka, duration of deep sleep)
-bool s_vcc;                  // whether to send VCC voltage as a parameter in the url request
-bool s_temp;                 // whether to send temperature from DHT11 as a parameter in the url request
-bool s_humidity;             // whether to send humidity from DHT11 as a parameter in the url request
-bool is_ip;                  // whether host adress is IP
-String vcc_parm;             // parameter to pass VCC voltage by
-String temp_parm;            // parameter to pass temperature by
-String humidity_parm;        // parameter to pass humidity by
+int wc_p;                      // max. time in seconds to connect to wifi, before giving up
+int gr_p;                      // max. times of attemps to perform GET request, before giving up
+int reporting_interval_mins;   // number of minutes between reporting (aka, duration of deep sleep)
+bool s_vcc;                    // whether to send VCC voltage as a parameter in the url request
+bool s_temp;                   // whether to send temperature from DHT11 as a parameter in the url request
+bool s_humidity;               // whether to send humidity from DHT11 as a parameter in the url request
+bool is_ip;                    // whether host adress is IP
+String vcc_parm;               // parameter to pass VCC voltage by
+String temp_parm;              // parameter to pass temperature by
+String humidity_parm;          // parameter to pass humidity by
+bool s_lowbattery;             // whether to send low battery notifications
+uint32_t lowbattery_threshold; // notifications will be sent when the battery level falls below this threshold
+String lowbattery_uri;         // the uri to GET when battery level falls below the threshold
 
 // Temp/Humidity sensor setup
 #define DHT_PIN 0
@@ -245,12 +248,42 @@ void loop()
         return;
       }
     }
-
-    //create the URI for the request
+    
+    uint32_t vccRaw;
+    if (s_vcc || s_lowbattery) {
+      uint32_t vccRaw = ESP.getVcc();
+    }
+    
+    if (s_lowbattery && vccRaw < lowbattery_threshold) {
+      // need to send a low battery notification
+      Serial.println("Sending low battery notification");
+      String lowbattery_url = lowbattery_uri.substring(lowbattery_uri.indexOf("/"));
+      String lowbattery_host = lowbattery_uri.substring(0, lowbattery_uri.indexOf("/"));
+      if (!client.connect(lowbattery_host, httpPort))
+      {
+        //try again if the connection fails.
+        Serial.println("connection failed");
+        delay(10);
+        return;
+      }
+      client.print(String("GET ") + lowbattery_url + " HTTP/1.1\r\n" +
+                 "Host: " + lowbattery_host + "\r\n" +
+                 "Connection: close\r\n\r\n");
+      unsigned long timeout = millis();
+      while (client.available() == 0)
+      {
+        if (millis() - timeout > 60000)
+        {
+          //give up if the server takes too long to reply.
+          Serial.println(">>> Client Timeout !");
+          client.stop();
+        }
+      }
+    }
+    
     if (s_vcc) {
-      uint32_t getVcc = ESP.getVcc();
-      String vccVol = String((getVcc / 1000U) % 10) + "." + String((getVcc / 100U) % 10) + String((getVcc / 10U) % 10) + String((getVcc / 1U) % 10);
-      addQueryParam(url, vcc_parm, vccVol);
+      String vccFormatted = String((vccRaw / 1000U) % 10) + "." + String((vccRaw / 100U) % 10) + String((vccRaw / 10U) % 10) + String((vccRaw / 1U) % 10);
+      addQueryParam(url, vcc_parm, vccFormatted);
     }
     if (s_temp) {
       addQueryParam(url, temp_parm, String(dht.readTemperature()));
@@ -369,7 +402,7 @@ void readConfig()
   }
   std::unique_ptr<char[]> buf(new char[size]);
   configFile.readBytes(buf.get(), size);
-  StaticJsonBuffer<450> jsonBuffer;
+  StaticJsonBuffer<700> jsonBuffer;
   JsonObject &json = jsonBuffer.parseObject(buf.get());
   if (!json.success())
   {
@@ -392,6 +425,9 @@ void readConfig()
   vcc_parm = (const char *)json["vcc_p"];
   temp_parm = (const char *)json["temp_p"];
   humidity_parm = (const char *)json["humidity_p"];
+  s_lowbattery = json["s_lowbattery"];
+  lowbattery_threshold = json["lowbattery_threshold"];
+  lowbattery_uri = (const char *)json["lowbattery_uri"];
 
   Serial.println("Parsed JSON Config.");
   Serial.print("Loaded ssid: ");
@@ -422,6 +458,12 @@ void readConfig()
   Serial.println(s_humidity);
   Serial.print("Loaded Humidity Param.: ");
   Serial.println(humidity_parm);
+  Serial.print("Loaded Low Batttery: ");
+  Serial.println(s_lowbattery);
+  Serial.print("Loaded Low Batttery Threshold: ");
+  Serial.println(lowbattery_threshold);
+  Serial.print("Loaded Low Batttery URI: ");
+  Serial.println(lowbattery_uri);
   Serial.println();
 }
 
@@ -611,3 +653,4 @@ void handleFileList()
   output += "]";
   server.send(200, "text/json", output);
 }
+
