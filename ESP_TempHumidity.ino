@@ -21,7 +21,7 @@
    Connect CONFIG_PIN(Default GPIO_03[RX]) to GND during startup to enter Config. Mode:
       1. Connect to 'ESP_Button' WiFi Access Point, with the password 'wifibutton'
       2. Visit http://192.168.4.1 to open the configuration page, or  http://192.168.4.1/edit to see the filesystem.
-      3. After seeting your values, click on the 'Save' button then the 'Restart'
+      3. After setting your values, click on the 'Save' button then the 'Restart'
       4. Your button is now configured.
 */
 String ssid;
@@ -43,14 +43,14 @@ uint32_t lowbattery_threshold; // notifications will be sent when the battery le
 String lowbattery_uri;         // the uri to GET when battery level falls below the threshold
 
 // Temp/Humidity sensor setup
-#define DHT_PIN D1
-#define DHT_TYPE DHT11
+#define DHT_PIN 0
+#define DHT_TYPE DHT22
 DHT dht(DHT_PIN, DHT_TYPE);
 
 /*
    System Variables
 */
-//#define NOT_DEBUG //wether to enable debug or to show indication lights instead
+
 //Normal Mode
 int failCount = 0;
 ADC_MODE(ADC_VCC);
@@ -66,7 +66,7 @@ const char *APpass = "wifisensor";
 void gotoSleep() {
   ESP.deepSleep(reporting_interval_mins * 60 * 1000000);
 }
-  
+
 void setup()
 {
   //start serial monitor, SPIFFS and Config. Pin
@@ -83,6 +83,7 @@ void setup()
 
   SPIFFS.begin();
   Serial.println();
+  delay(10);
   Serial.println("ESP Booting...");
   Serial.println("SPIFFS Content: ");
   {
@@ -105,16 +106,15 @@ void setup()
   {
 
     //start Config. Mode
-#ifdef NOT_DEBUG
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, LOW);
-#endif
+    
     Serial.println("Entering Config. Mode!");
 
     //start WiFi Access Point
     Serial.println("Configuring access point...");
     WiFi.mode(WIFI_AP_STA);
-    WiFi.softAP(APssid, APpass);
+    Serial.println(WiFi.softAP(APssid, APpass, 7, false));
 
     IPAddress myIP = WiFi.softAPIP();
     Serial.print("AP IP address: ");
@@ -125,7 +125,7 @@ void setup()
     //edit pages
     server.on("/list", HTTP_GET, handleFileList);
     server.on("/edit", HTTP_GET, []() {
-      if (!handleFileRead("/edit.htm"))
+    if (!handleFileRead("/edit.htm"))
         server.send(404, "text/plain", "FileNotFound");
     });
     server.on("/edit", HTTP_PUT, handleFileCreate);
@@ -213,7 +213,7 @@ void loop()
 
     Serial.print("Try: ");
     Serial.println(failCount);
-  
+
     //try to connect to the host with TCP
     WiFiClient client;
     const int httpPort = 80;
@@ -226,7 +226,7 @@ void loop()
       Serial.print("lowbattery_threshold: ");
       Serial.println(lowbattery_threshold);
     }
-    
+
     if (s_lowbattery && vccRaw < lowbattery_threshold) {
       // need to send a low battery notification
       Serial.println("Sending low battery notification");
@@ -238,8 +238,8 @@ void loop()
         delay(10);
       }
       client.print(String("GET ") + lowbattery_url + " HTTP/1.1\r\n" +
-                 "Host: " + lowbattery_host + "\r\n" +
-                 "Connection: close\r\n\r\n");
+                   "Host: " + lowbattery_host + "\r\n" +
+                   "Connection: close\r\n\r\n");
       unsigned long timeout = millis();
       while (client.available() == 0)
       {
@@ -253,7 +253,7 @@ void loop()
       // assume low battery notification worked. Prevent retrying if next http request is retried
       s_lowbattery = false;
     }
-    
+
     Serial.print("connecting to ");
     Serial.println(host);
     if (is_ip)
@@ -286,9 +286,9 @@ void loop()
         return;
       }
     }
-    
 
-    
+
+
     if (s_vcc) {
       String vccFormatted = String((vccRaw / 1000U) % 10) + "." + String((vccRaw / 100U) % 10) + String((vccRaw / 10U) % 10) + String((vccRaw / 1U) % 10);
       addQueryParam(url, vcc_parm, vccFormatted);
@@ -389,7 +389,7 @@ void yay()
 
 void readConfig()
 {
-  //read config.json and load configuration to variables.
+  //read config.jsn and load configuration to variables.
   File configFile = SPIFFS.open("/config.jsn", "r");
   if (!configFile)
   {
@@ -398,10 +398,10 @@ void readConfig()
       ;
   }
   size_t size = configFile.size();
-  
+
   Serial.print("Config File Size: ");
   Serial.println(String (size));
-  
+
   if (size > 1024)
   {
     Serial.println("Config file size is too large");
@@ -410,7 +410,7 @@ void readConfig()
   }
   std::unique_ptr<char[]> buf(new char[size]);
   configFile.readBytes(buf.get(), size);
-  StaticJsonBuffer<700> jsonBuffer;
+  StaticJsonBuffer<800> jsonBuffer;
   JsonObject &json = jsonBuffer.parseObject(buf.get());
   if (!json.success())
   {
@@ -554,6 +554,10 @@ bool handleFileRead(String path)
     path += "index.htm";
   String contentType = getContentType(path);
   String pathWithGz = path + ".gz";
+  Serial.print("ContentType: ");
+  Serial.println(contentType);
+  Serial.print("PathWithGz: ");
+  Serial.println(pathWithGz);
   if (SPIFFS.exists(pathWithGz) || SPIFFS.exists(path))
   {
     if (SPIFFS.exists(pathWithGz))
@@ -563,6 +567,8 @@ bool handleFileRead(String path)
     file.close();
     return true;
   }
+  Serial.print("File not found in SPIFFS: ");
+  Serial.println(path);
   return false;
 }
 

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+	  <title>Button Configuration Page</title>
+	  <script>
+		var configObject;
+		var defaultJSON =
+		  '{"ssid": "SSID Here","pass": "Password Here","host": "examplewebsite.com","is_ip": false,"uri": "/makemyrequest/","wc_p":10, "gr_p": 5, "reporting_interval_mins": 120, "s_vcc": true, "vcc_p": "field1", "s_temp": false, "temp_p": "field2", "s_humidity": false, "humidity_p": "field3", "s_lowbattery": false, "lowbattery_threshold": 3150, "lowbattery_uri": "maker.ifttt.com/trigger/notify/with/key/##### KEY #####?value1=%22Low%20battery%20alert!&value2=Temp%20Humidity%20sensor%20battery%20is%20low%22"}';
+		//post
+		function httpPostProcessRequest() {
+		  if (xmlHttp.readyState == 4) {
+			if (xmlHttp.status != 200) {
+			  alert("ERROR[" + xmlHttp.status + "]: " + xmlHttp.responseText)
+			} else {
+			  //restartESP();
+			  alert("Values Set! Restart ESP to update them.");
+			}
+		  }
+		}
+
+		function httpPost(filename, data, type) {
+		  xmlHttp = new XMLHttpRequest();
+		  xmlHttp.onreadystatechange = httpPostProcessRequest;
+		  var formData = new FormData();
+		  formData.append("data", new Blob([data], {
+			type: type
+		  }), filename);
+		  xmlHttp.open("POST", "/edit");
+		  xmlHttp.send(formData);
+		}
+
+		function parseLConfig() {
+		  return function () {
+			if (xmlHttp.readyState == 4) {
+			  //clear loading
+			  if (xmlHttp.status == 200) {
+				parseEConfig(xmlHttp.responseText);
+			  }
+			}
+		  }
+		}
+
+		function parseEConfig(JSONin) {
+		  configObject = JSON.parse(JSONin);
+		  document.getElementById("ssid").value = configObject.ssid;
+		  document.getElementById("pass").value = configObject.pass;
+		  document.getElementById("host").value = configObject.host;
+		  document.getElementById("uri").value = configObject.uri;
+		  document.getElementById("wifi-attempts").valueAsNumber = configObject.wc_p;
+		  document.getElementById('wifi-attempts').oninput();
+		  document.getElementById("req-attempts").valueAsNumber = configObject.gr_p;
+		  document.getElementById('req-attempts').oninput();
+		  document.getElementById("reporting_interval_mins").valueAsNumber = configObject.reporting_interval_mins;
+		  document.getElementById('reporting_interval_mins').oninput();
+		  document.getElementById("s_vcc").checked = configObject.s_vcc;
+		  document.getElementById("is_ip").checked = configObject.is_ip;
+		  document.getElementById("vcc_parm").value = configObject.vcc_p;
+		  document.getElementById("s_vcc").onchange();
+		  document.getElementById("s_temp").checked = configObject.s_temp;
+		  document.getElementById("temp_parm").value = configObject.temp_p;	  
+		  document.getElementById("s_temp").onchange();
+		  document.getElementById("s_humidity").checked = configObject.s_humidity;
+		  document.getElementById("humidity_parm").value = configObject.humidity_p;
+		  document.getElementById("s_humidity").onchange();
+		  document.getElementById("s_lowbattery").checked = configObject.s_lowbattery;
+		  document.getElementById("s_lowbattery").onchange();		  
+		  document.getElementById("lowbattery_threshold").value = configObject.lowbattery_threshold/1000;
+		  document.getElementById("lowbattery_uri").value = configObject.lowbattery_uri;
+		  document.getElementById('lowbattery_threshold').oninput();
+		}
+
+		function httpGet(path) {
+		  xmlHttp = new XMLHttpRequest();
+		  xmlHttp.onreadystatechange = parseLConfig();
+		  xmlHttp.open("GET", path, true);
+		  xmlHttp.send(null);
+		  //start loading
+		}
+
+		function sendString() {
+		  var JSONout = '{\n  "ssid" : "';
+		  JSONout += document.getElementById("ssid").value;
+		  JSONout += '",\n  "pass" : "';
+		  JSONout += document.getElementById("pass").value;
+		  JSONout += '",\n  "host" : "';
+		  JSONout += document.getElementById("host").value;
+		  JSONout += '",\n  "is_ip" : ';
+		  JSONout += document.getElementById("is_ip").checked;
+		  JSONout += ',\n  "uri" : "';
+		  JSONout += document.getElementById("uri").value;
+		  JSONout += '",\n  "wc_p" : ';
+		  JSONout += document.getElementById("wifi-attempts").valueAsNumber;
+		  JSONout += ',\n  "gr_p" : ';
+		  JSONout += document.getElementById("req-attempts").valueAsNumber;
+		  JSONout += ',\n  "reporting_interval_mins" : ';
+		  JSONout += document.getElementById("reporting_interval_mins").valueAsNumber;
+		  JSONout += ',\n  "s_vcc" : ';
+		  JSONout += document.getElementById("s_vcc").checked;
+		  JSONout += ',\n  "vcc_p": "';
+		  JSONout += document.getElementById("vcc_parm").value;
+		  JSONout += '",\n  "s_temp" : ';
+		  JSONout += document.getElementById("s_temp").checked;
+		  JSONout += ',\n  "temp_p": "';
+		  JSONout += document.getElementById("temp_parm").value;
+		  JSONout += '",\n  "s_humidity" : ';
+		  JSONout += document.getElementById("s_humidity").checked;
+		  JSONout += ',\n  "humidity_p": "';
+		  JSONout += document.getElementById("humidity_parm").value;
+		  JSONout += '",\n  "s_lowbattery" : ';
+		  JSONout += document.getElementById("s_lowbattery").checked;
+		  JSONout += ',\n  "lowbattery_threshold" : ';
+		  JSONout += document.getElementById("lowbattery_threshold").valueAsNumber * 1000;
+		  JSONout += ',\n  "lowbattery_uri" : "';
+		  JSONout += document.getElementById("lowbattery_uri").value;
+		  JSONout += '"\n}';
+console.log(JSONout);
+		  httpPost("/config.jsn", JSONout, "text/plain");
+		}
+
+		function restartESP() {
+		  xmlHttp = new XMLHttpRequest();
+		  xmlHttp.onreadystatechange = function () {
+			if (xmlHttp.readyState == 4) {
+			  if (xmlHttp.status == 200) {
+				alert("Restarting ESP...");
+				window.location.reload();
+			  }
+			}
+		  };
+		  xmlHttp.open("GET", "/?restart=true", true);
+		  xmlHttp.send(null);
+		}
+	  </script>
+	</head>
+
+	<body onload="httpGet('/config.jsn');">
+
+		<h2>Configuration</h2>
+		<div class="form">
+			<fieldset>
+				<legend>WiFi Options</legend>
+				<label for="ssid">SSID:</label><input type="text" id="ssid"><br/>
+				<label for="pass">Password:</label><input type="text" id="pass">
+			</fieldset>
+			
+			<fieldset>
+				<legend>GET Request Options</legend>
+				<label for="host">Host:</label><input type="text" id="host"><br/>
+				<label for="is_ip">Is IP Address:</label><input type="checkbox" id="is_ip"><br/>
+				<label for="uri">URI:</label><input type="text" id="uri"><br/>
+				<label for="wifi-attempts">Max. WiFi Connect Time:</label><input type="range" id="wifi-attempts" min="5" max="20" oninput="document.getElementById('wattemp-label').value = this.value + 's';"><input type="text" readonly size="3" id="wattemp-label"><br/>
+				<label for="req-attempts">Max. Request Attempts:</label><input type="range" id="req-attempts" min="5" max="25" oninput="document.getElementById('rattemp-label').value = this.value;"><input type="text" readonly size="3" id="rattemp-label"><br/>			
+				<label for="reporting_interval_mins">Reporting Interval:</label><input type="range" id="reporting_interval_mins" min="1" max="1440" oninput="document.getElementById('reporting_interval_mins-label').value = this.value + 'm';"><input type="text" readonly size="3" id="reporting_interval_mins-label"><br/>			
+			</fieldset>		
+			
+			<fieldset>
+				<legend>Battery level</legend>
+				<label for="s_vcc">Log battery?:</label><input type="checkbox" id="s_vcc" onchange="document.getElementById('vcc_parm').disabled = !document.getElementById('s_vcc').checked;"><br/>
+				<label for="vcc_parm">Parameter name:</label><input type="text" id="vcc_parm">
+			</fieldset>
+
+			<fieldset>
+				<legend>Temperature</legend>
+				<label for="s_temp">Log temp?:</label><input type="checkbox" id="s_temp" onchange="document.getElementById('temp_parm').disabled = !document.getElementById('s_temp').checked;"><br/>
+				<label for="temp_parm">Parameter name:</label><input type="text" id="temp_parm">
+			</fieldset>
+			
+			<fieldset>
+				<legend>Humidity</legend>
+				<label for="s_humidity">Log humidity?:</label><input type="checkbox" id="s_humidity" onchange="document.getElementById('humidity_parm').disabled = !document.getElementById('s_humidity').checked;"><br/>
+				<label for="humidity_parm">Parameter name:</label><input type="text" id="humidity_parm">
+			</fieldset>
+
+			<fieldset>
+				<legend>Low battery notification</legend>
+				<label for="s_lowbattery">Enable alerts?:</label><input type="checkbox" id="s_lowbattery" onchange="document.getElementById('lowbattery_uri').disabled = !document.getElementById('s_lowbattery').checked;document.getElementById('lowbattery_threshold').disabled = !document.getElementById('s_lowbattery').checked;document.getElementById('lowbattery_threshold-label').disabled = !document.getElementById('s_lowbattery').checked;"><br/>
+				<label for="lowbattery_threshold">Threshold (volts):</label><input type="range" id="lowbattery_threshold" min="2.0" max="5.0" step="0.05" oninput="document.getElementById('lowbattery_threshold-label').value = this.value + 'v';"><input type="text" readonly size="3" id="lowbattery_threshold-label"><br/>
+				<label for="lowbattery_uri">URI:</label><input type="text" id="lowbattery_uri">
+			</fieldset>
+			
+			<hr/>
+			<div class="buttonBar">
+				<button onclick="sendString();">Save</button>
+				<button onclick="parseEConfig(defaultJSON);">Load Defaults</button>
+				<button onclick="restartESP();">Restart</button>
+			</div>
+		</div>
+		
+	  <style type="text/css">
+		body {font-family: sans-serif;width:500px;margin:auto;background: #f5f5f5;}
+		input {margin-top: 3px;}
+		input[type=range] {width: 115px;}
+		label {width: 200px;display:inline-block;text-align:right;margin-right: 5px;}
+		fieldset {text-align: left;margin-bottom:25px;}
+		.buttonBar {text-align: center;}
+		.form {background: #fff; padding: 10px;}
+		fieldset, .form {border-radius: 3px;}
+	  </style>
+
+	</body>
+</html>
