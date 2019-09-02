@@ -43,7 +43,7 @@ uint32_t lowbattery_threshold; // notifications will be sent when the battery le
 String lowbattery_uri;         // the uri to GET when battery level falls below the threshold
 
 // Temp/Humidity sensor setup
-#define DHT_PIN 0
+#define DHT_PIN D1
 #define DHT_TYPE DHT22
 DHT dht(DHT_PIN, DHT_TYPE);
 
@@ -172,7 +172,6 @@ void setup()
         gotoSleep();
       }
     }
-
     Serial.println("");
     Serial.println("WiFi connected");
     Serial.print("IP address: ");
