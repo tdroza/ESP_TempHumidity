@@ -219,8 +219,11 @@ void loop()
     const int httpPort = 80;
 
     uint32_t vccRaw;
+    String vccFormatted;
     if (s_vcc || s_lowbattery) {
       vccRaw = ESP.getVcc();
+      vccFormatted = String((vccRaw / 1000U) % 10) + "." + String((vccRaw / 100U) % 10) + String((vccRaw / 10U) % 10) + String((vccRaw / 1U) % 10);
+      
       Serial.print("VCC Raw: ");
       Serial.println(vccRaw);
       Serial.print("lowbattery_threshold: ");
@@ -231,6 +234,7 @@ void loop()
       // need to send a low battery notification
       Serial.println("Sending low battery notification");
       String lowbattery_url = lowbattery_uri.substring(lowbattery_uri.indexOf("/"));
+      addQueryParam(lowbattery_url, "value3", vccFormatted);
       String lowbattery_host = lowbattery_uri.substring(0, lowbattery_uri.indexOf("/"));
       if (!client.connect(lowbattery_host, httpPort))
       {
@@ -290,7 +294,6 @@ void loop()
 
 
     if (s_vcc) {
-      String vccFormatted = String((vccRaw / 1000U) % 10) + "." + String((vccRaw / 100U) % 10) + String((vccRaw / 10U) % 10) + String((vccRaw / 1U) % 10);
       addQueryParam(url, vcc_parm, vccFormatted);
     }
     if (s_temp) {
